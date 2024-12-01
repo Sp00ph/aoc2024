@@ -1,7 +1,10 @@
-use std::time::{Duration, Instant};
+use std::{
+    hint::black_box,
+    time::{Duration, Instant},
+};
 
 use anyhow::Context;
-use clap::Parser;
+use clap::{Parser, value_parser};
 use seq_macro::seq;
 
 seq!(N in 1..=25 {
@@ -27,6 +30,13 @@ enum Args {
         input: Option<String>,
         #[arg(short = 't', long)]
         show_time: bool,
+        #[arg(
+            short = 'n', long,
+            default_value_if("show_time", "true", "100"),
+            default_value_t = 1,
+            value_parser = value_parser!(u32).range(1..)
+        )]
+        iterations: u32,
     },
     #[clap(alias = "rd")]
     RunDay {
@@ -37,6 +47,14 @@ enum Args {
         show_time: bool,
         #[arg(short = 'T', long)]
         show_total_time: bool,
+        #[arg(
+            short = 'n', long,
+            default_value_if("show_time", "true", "100"),
+            default_value_if("show_total_time", "true", "100"),
+            default_value_t = 1,
+            value_parser = value_parser!(u32).range(1..)
+        )]
+        iterations: u32,
     },
     #[clap(alias = "ra")]
     RunAll {
@@ -44,6 +62,14 @@ enum Args {
         show_time: bool,
         #[arg(short = 'T', long)]
         show_total_time: bool,
+        #[arg(
+            short = 'n', long,
+            default_value_if("show_time", "true", "10"),
+            default_value_if("show_total_time", "true", "10"),
+            default_value_t = 1,
+            value_parser = value_parser!(u32).range(1..)
+        )]
+        iterations: u32,
     },
 }
 
@@ -53,20 +79,27 @@ fn run_part(
     input: Option<String>,
     show_time: bool,
     acc: Option<&mut Duration>,
+    iterations: u32,
 ) -> anyhow::Result<()> {
     let input = match input {
         Some(input) => input,
         None => std::fs::read_to_string(format!("input/day{}.txt", day))
             .context("Input for this day isn't available.")?,
     };
-    let fns = &FNS[day - 1];
+    let f = &FNS[day - 1][part - 1];
     let now = Instant::now();
-    let output = fns[part - 1](&input);
+    let output = f(&input);
+    for _ in 1..iterations {
+        black_box(f(&input));
+    }
     let elapsed = now.elapsed();
     println!("===== Day {} Part {} =====", day, part);
     println!("{}", output);
     if show_time {
-        println!("Finished in: {:.3?}", elapsed);
+        println!(
+            "Average runtime across {iterations} iterations: {:.3?}",
+            elapsed / iterations
+        );
     }
     if let Some(acc) = acc {
         *acc += elapsed;
@@ -82,35 +115,44 @@ fn main() -> anyhow::Result<()> {
             part,
             input,
             show_time,
-        } => run_part(day, part, input, show_time, None),
+            iterations,
+        } => run_part(day, part, input, show_time, None, iterations),
         Args::RunDay {
             day,
             input,
             show_time,
             show_total_time,
+            iterations,
         } => {
             let mut acc = show_total_time.then_some(Duration::ZERO);
 
-            run_part(day, 1, input.clone(), show_time, acc.as_mut())?;
-            run_part(day, 2, input, show_time, acc.as_mut())?;
+            run_part(day, 1, input.clone(), show_time, acc.as_mut(), iterations)?;
+            run_part(day, 2, input, show_time, acc.as_mut(), iterations)?;
 
             if let Some(acc) = acc {
-                println!("Total time: {:.3?}", acc);
+                println!(
+                    "Average total time across {iterations} iterations: {:.3?}",
+                    acc / iterations
+                );
             }
             Ok(())
         }
         Args::RunAll {
             show_time,
             show_total_time,
+            iterations,
         } => {
             let mut acc = show_total_time.then_some(Duration::ZERO);
             for day in 1..=25 {
-                run_part(day, 1, None, show_time, acc.as_mut())?;
-                run_part(day, 2, None, show_time, acc.as_mut())?;
+                run_part(day, 1, None, show_time, acc.as_mut(), iterations)?;
+                run_part(day, 2, None, show_time, acc.as_mut(), iterations)?;
             }
 
             if let Some(acc) = acc {
-                println!("Total time: {:.3?}", acc);
+                println!(
+                    "Average time across {iterations} iterations: {:.3?}",
+                    acc / iterations
+                );
             }
             Ok(())
         }
