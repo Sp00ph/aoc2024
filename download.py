@@ -11,7 +11,6 @@ import ssl
 from zoneinfo import ZoneInfo
 
 sslcontext = ssl.create_default_context(cafile=certifi.where())
-
 async def main():
     with open("options.json") as f:
         options = json.load(f)
