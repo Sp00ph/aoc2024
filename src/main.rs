@@ -7,13 +7,13 @@ use anyhow::Context;
 use clap::{Parser, value_parser};
 use seq_macro::seq;
 
-seq!(N in 1..=25 {
-    mod day~N;
-});
+type PartFn = fn(&str) -> String;
 
 seq!(N in 1..=25 {
+    #(mod day~N;)*
+
     #[used]
-    static FNS: [[fn(&str) -> String; 2]; 25] = [
+    static FNS: [[PartFn; 2]; 25] = [
         #(
             [day~N::part1, day~N::part2],
         )*
@@ -21,6 +21,7 @@ seq!(N in 1..=25 {
 });
 
 #[derive(Parser)]
+#[allow(clippy::enum_variant_names)]
 enum Args {
     #[clap(alias = "rp")]
     RunPart {
