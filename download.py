@@ -3,6 +3,7 @@
 import datetime
 import json
 import asyncio
+import os
 import aiohttp
 import aiofiles
 import pathlib
@@ -21,6 +22,7 @@ async def main():
     if year > today.year:
         raise Exception("Year is in the future")
 
+    os.makedirs("input", exist_ok=True)
     async def download_input_for_day(day: int, session: aiohttp.ClientSession):
         url = f"https://adventofcode.com/{year}/day/{day}/input"
         headers = {"Cookie": f"session={session_id}", "User-Agent": "github.com/Sp00ph/aoc2024"}
